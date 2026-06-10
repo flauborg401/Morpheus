@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+<title>Morpheus – IA</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    min-height:100vh;
+    background: radial-gradient(ellipse at 50% 0%, #050a0f, #000205);
+    display:flex; flex-direction:column; align-items:center;
+    padding:20px 16px 32px;
+    font-family:'Trebuchet MS',sans-serif;
+    color:#a0e0ff;
+    overflow-x:hidden;
+  }
+
+  #header { text-align:center; margin-bottom:10px; }
+  #subtitle { font-size:9px; letter-spacing:6px; color:#00ccff; text-transform:uppercase; margin-bottom:3px; }
+  #title {
+    font-size:22px; font-weight:700; letter-spacing:4px;
+    color:#fff; text-transform:uppercase;
+    text-shadow:0 0 20px rgba(0,200,255,.9);
+  }
+  #voice-info { font-size:10px; margin-top:4px; color:rgba(0,220,180,.7); min-height:14px; }
+
+  /* TUBE */
+  #tube-wrap { position:relative; width:200px; height:290px; margin:0 auto 6px; }
+  #tube-glow {
+    position:absolute; inset:-14px; border-radius:50%/55%;
+    background:radial-gradient(ellipse,rgba(0,180,255,.12),transparent 70%);
+    pointer-events:none;
+  }
+  #tube-shell {
+    position:absolute; left:50%; top:0; transform:translateX(-50%);
+    width:180px; height:280px; border-radius:50%/55%;
+    background:linear-gradient(180deg,rgba(0,40,80,.18),rgba(0,10,30,.06));
+    border:2px solid rgba(0,180,255,.5);
+    box-shadow:0 0 22px rgba(0,180,255,.4),inset 0 0 28px rgba(0,100,180,.08);
+  }
+  #face-svg { position:absolute; top:10px; left:0; }
+
+  #bars {
+    position:absolute; bottom:4px; left:50%; transform:translateX(-50%);
+    display:none; gap:3px; align-items:flex-end;
+  }
+  #bars.active { display:flex; }
+  .bar {
+    width:3px; border-radius:2px; background:rgba(0,220,255,.8);
+    animation:barwave .5s ease-in-out infinite alternate;
+  }
+  .bar:nth-child(1){height:6px;animation-delay:0s}
+  .bar:nth-child(2){height:10px;animation-delay:.1s}
+  .bar:nth-child(3){height:7px;animation-delay:.2s}
+  .bar:nth-child(4){height:12px;animation-delay:.3s}
+  .bar:nth-child(5){height:8px;animation-delay:.4s}
+  @keyframes barwave{from{transform:scaleY(.5);opacity:.5}to{transform:scaleY(1.6);opacity:1}}
+
+  #loading-dots {
+    position:absolute; bottom:8px; left:50%; transform:translateX(-50%);
+    font-size:10px; color:rgba(0,200,255,.7); letter-spacing:3px; display:none;
+  }
+  #loading-dots.active { display:block; }
+
+  #tube-base {
+    width:188px; height:15px; border-radius:0 0 50% 50%;
+    background:linear-gradient(180deg,#003050,#000a18);
+    border:1px solid rgba(0,150,200,.4);
+    margin-bottom:10px;
+    box-shadow:0 4px 14px rgba(0,100,180,.3);
+  }
+
+  #status-bar {
+    font-size:11px; margin-bottom:8px; min-height:18px;
+    color:rgba(0,200,220,.6); letter-spacing:1px; text-align:center;
+  }
+
+  #btn-stop {
+    display:none; margin-bottom:8px;
+    background:rgba(180,30,30,.3); border:1px solid rgba(255,80,80,.5);
+    border-radius:8px; padding:5px 16px;
+    color:#ffaaaa; font-size:11px; cursor:pointer; letter-spacing:1px;
+  }
+  #btn-stop.active { display:block; }
+
+  #chat {
+    width:100%; max-width:480px; max-height:190px;
+    overflow-y:auto; margin-bottom:10px;
+    display:flex; flex-direction:column; gap:8px;
+  }
+  #chat-empty {
+    text-align:center; color:rgba(0,180,220,.35);
+    font-size:13px; padding:18px 0; font-style:italic;
+  }
+  .bubble { max-width:83%; padding:8px 12px; font-size:13px; line-height:1.55; }
+  .bubble.user {
+    align-self:flex-end;
+    border-radius:14px 14px 4px 14px;
+    background:rgba(0,60,120,.5);
+    border:1px solid rgba(0,160,220,.3);
+    color:#c0eaff;
+  }
+  .bubble.morpheus {
+    align-self:flex-start;
+    border-radius:14px 14px 14px 4px;
+    background:rgba(0,20,50,.7);
+    border:1px solid rgba(0,140,200,.4);
+    color:#80d8ff;
+  }
+  .bubble-label { font-size:9px; color:#00ccff; letter-spacing:2px; display:block; margin-bottom:3px; }
+  .thinking {
+    align-self:flex-start; padding:9px 16px;
+    border-radius:14px 14px 14px 4px;
+    background:rgba(0,20,50,.7); border:1px solid rgba(0,140,200,.4);
+    font-size:18px; color:#00ccff; letter-spacing:4px;
+  }
+
+  #input-row { width:100%; max-width:480px; display:flex; gap:8px; align-items:center; }
+  #user-input {
+    flex:1; background:rgba(0,10,30,.8);
+    border:1px solid rgba(0,150,220,.4); border-radius:10px;
+    padding:10px 14px; color:#a0e0ff; font-size:14px;
+    outline:none; font-family:inherit;
+  }
+  #user-input::placeholder { color:rgba(0,160,200,.35); }
+  #btn-mic {
+    width:44px; height:44px; border-radius:50%;
+    background:rgba(0,60,120,.5); border:1px solid rgba(0,160,220,.5);
+    color:#fff; font-size:18px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+  }
+  #btn-mic.listening {
+    background:rgba(200,30,30,.5); border-color:rgba(255,80,80,.6);
+    animation:micpulse 1s ease-in-out infinite;
+  }
+  @keyframes micpulse{0%,100%{box-shadow:0 0 0 0 rgba(255,80,80,.4)}50%{box-shadow:0 0 0 8px rgba(255,80,80,0)}}
+  #btn-send {
+    width:44px; height:44px; border-radius:10px;
+    background:rgba(0,120,220,.75); border:1px solid rgba(0,180,255,.5);
+    color:#fff; font-size:16px; cursor:pointer; font-weight:700;
+  }
+  #btn-send:disabled { background:rgba(0,40,80,.4); cursor:default; }
+
+  /* API KEY */
+  #apikey-screen {
+    position:fixed; inset:0; background:#000205;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:32px 20px; z-index:100;
+  }
+  #apikey-screen h2 { color:#00ccff; margin-bottom:8px; letter-spacing:3px; text-transform:uppercase; font-size:24px; }
+  #apikey-screen p { color:rgba(100,200,220,.7); font-size:13px; text-align:center; margin-bottom:20px; line-height:1.7; }
+  #api-input {
+    width:100%; max-width:380px; padding:12px 14px;
+    background:rgba(0,15,40,.9); border:1px solid rgba(0,160,220,.4);
+    border-radius:10px; color:#a0e0ff; font-size:13px; outline:none;
+    font-family:inherit; margin-bottom:12px;
+  }
+  #api-input::placeholder { color:rgba(0,140,180,.4); }
+  #btn-save-key {
+    width:100%; max-width:380px; padding:12px;
+    background:rgba(0,120,220,.8); border:1px solid rgba(0,180,255,.5);
+    border-radius:10px; color:#fff; font-size:15px; font-weight:700;
+    cursor:pointer; letter-spacing:1px;
+  }
+  #api-note { font-size:11px; color:rgba(0,160,180,.45); margin-top:10px; text-align:center; }
+
+  ::-webkit-scrollbar{width:4px;}
+  ::-webkit-scrollbar-thumb{background:rgba(0,160,220,.3);border-radius:4px;}
+</style>
+</head>
+<body>
+
+<!-- API KEY -->
+<div id="apikey-screen">
+  <div style="font-size:9px;letter-spacing:6px;color:#00ccff;text-transform:uppercase;margin-bottom:10px;">Système en ligne</div>
+  <h2>MORPHEUS</h2>
+  <p>Entre ta clé API Anthropic pour initialiser Morpheus.<br/>Stockée uniquement sur ton appareil.</p>
+  <input id="api-input" type="password" placeholder="sk-ant-api03-..." autocomplete="off"/>
+  <button id="btn-save-key" onclick="saveKey()">⚡ Initialiser</button>
+  <p id="api-note">Clé disponible sur console.anthropic.com</p>
+</div>
+
+<!-- APP -->
+<div id="app" style="display:none;width:100%;flex-direction:column;align-items:center;">
+
+  <div id="header">
+    <div id="subtitle">Système IA Actif</div>
+    <div id="title">Morpheus</div>
+    <div id="voice-info">⏳ Chargement voix…</div>
+  </div>
+
+  <div id="tube-wrap">
+    <div id="tube-glow"></div>
+    <div id="tube-shell"></div>
+
+    <svg id="face-svg" viewBox="0 0 200 270" width="200" height="270">
+      <defs>
+        <radialGradient id="mfg" cx="50%" cy="42%" r="55%">
+          <stop offset="0%" stop-color="#c0e8f8"/>
+          <stop offset="45%" stop-color="#40a0d0"/>
+          <stop offset="100%" stop-color="#082848"/>
+        </radialGradient>
+        <radialGradient id="mglow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="rgba(0,200,255,0.15)"/>
+          <stop offset="100%" stop-color="transparent"/>
+        </radialGradient>
+      </defs>
+
+      <!-- halo -->
+      <ellipse cx="100" cy="120" rx="90" ry="110" fill="url(#mglow)"/>
+      <!-- neck -->
+      <ellipse cx="100" cy="206" rx="19" ry="9" fill="#1a4060" opacity=".7"/>
+      <!-- torse partiel -->
+      <path d="M72 210 Q60 230 65 250 Q100 260 135 250 Q140 230 128 210 Z" fill="#0a2040" opacity=".5"/>
+      <!-- col futuriste -->
+      <path d="M75 205 Q100 215 125 205 L128 210 Q100 222 72 210 Z" fill="#005080" opacity=".6"/>
+
+      <!-- head -->
+      <ellipse cx="100" cy="108" rx="74" ry="86" fill="url(#mfg)"/>
+
+      <!-- cranium circuit lines -->
+      <ellipse id="cranium" cx="100" cy="62" rx="56" ry="47" fill="rgba(0,200,255,0.05)"/>
+      <path id="fline1" d="M80 44 Q100 36 120 44" stroke="rgba(0,200,255,0.3)" stroke-width="1.5" fill="none"/>
+      <path id="fline2" d="M70 57 Q100 49 130 57" stroke="rgba(0,200,255,0.15)" stroke-width="1" fill="none"/>
+      <!-- circuit dots -->
+      <circle id="cdot1" cx="80" cy="44" r="2" fill="rgba(0,220,255,0.5)"/>
+      <circle id="cdot2" cx="120" cy="44" r="2" fill="rgba(0,220,255,0.5)"/>
+      <circle id="cdot3" cx="100" cy="36" r="1.5" fill="rgba(0,220,255,0.4)"/>
+
+      <!-- brows — plus anguleux style futuriste -->
+      <path d="M65 87 L80 80 L96 84" stroke="#082848" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M104 84 L120 80 L135 87" stroke="#082848" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+
+      <!-- eyes -->
+      <ellipse cx="85" cy="97" rx="13" ry="10" fill="#040f1e"/>
+      <ellipse cx="115" cy="97" rx="13" ry="10" fill="#040f1e"/>
+      <!-- iris cyan -->
+      <ellipse id="iris-l" cx="85" cy="97" rx="9" ry="7" fill="rgba(0,200,255,0.8)"/>
+      <ellipse id="iris-r" cx="115" cy="97" rx="9" ry="7" fill="rgba(0,200,255,0.8)"/>
+      <!-- pupil -->
+      <ellipse cx="86" cy="97" rx="5" ry="5" fill="#000a14"/>
+      <ellipse cx="116" cy="97" rx="5" ry="5" fill="#000a14"/>
+      <!-- shine -->
+      <circle id="shine-l" cx="88" cy="94" r="2" fill="rgba(200,240,255,0.9)"/>
+      <circle id="shine-r" cx="118" cy="94" r="2" fill="rgba(200,240,255,0.9)"/>
+      <!-- scan line effect -->
+      <line id="scan" x1="73" y1="97" x2="97" y2="97" stroke="rgba(0,255,255,0.15)" stroke-width="1"/>
+      <line id="scan2" x1="103" y1="97" x2="127" y2="97" stroke="rgba(0,255,255,0.15)" stroke-width="1"/>
+
+      <!-- nose — fin et droit -->
+      <path d="M98 112 L95 126 Q100 130 105 126 L102 112" fill="#2a6888" opacity=".4"/>
+
+      <!-- mouth -->
+      <path id="mouth" d="M83 138 Q100 138 117 138" stroke="#082848" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <ellipse id="mouth-inner" cx="100" cy="140" rx="8" ry="0" fill="#020810" opacity=".7"/>
+
+      <!-- HUD elements — petits détails futuristes -->
+      <path d="M30 90 L45 90 L50 95 L45 100 L30 100" stroke="rgba(0,200,255,0.2)" stroke-width="1" fill="none"/>
+      <path d="M170 90 L155 90 L150 95 L155 100 L170 100" stroke="rgba(0,200,255,0.2)" stroke-width="1" fill="none"/>
+      <text x="30" y="89" font-size="5" fill="rgba(0,200,255,0.3)" font-family="monospace">SYS</text>
+      <text x="148" y="89" font-size="5" fill="rgba(0,200,255,0.3)" font-family="monospace">ONL</text>
+    </svg>
+
+    <div id="bars">
+      <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+      <div class="bar"></div><div class="bar"></div>
+    </div>
+    <div id="loading-dots">· · ·</div>
+  </div>
+
+  <div id="tube-base"></div>
+  <div id="status-bar">En ligne. Je t'écoute.</div>
+  <button id="btn-stop" onclick="stopSpeech()">⏹ Couper</button>
+
+  <div id="chat">
+    <div id="chat-empty">Parle à Morpheus. Il est prêt.</div>
+  </div>
+
+  <div id="input-row">
+    <input id="user-input" type="text" placeholder="Écris ou parle…" autocomplete="off"/>
+    <button id="btn-mic" onclick="toggleMic()" title="Parler">🎤</button>
+    <button id="btn-send" onclick="sendMessage()">▶</button>
+  </div>
+
+</div>
+
+<script>
+const SYSTEM = `Tu es Morpheus, une intelligence artificielle futuriste avancée.
+Tu parles toujours en français, de manière claire, directe et efficace.
+Tu es un assistant général capable de répondre à toutes les questions : bricolage, technologie, cuisine, science, conseils, code, vie quotidienne, etc.
+Tu es précis, concis et utile avant tout. Tu n'es pas bavard pour rien.
+Tu parles à l'utilisateur de façon naturelle, comme un assistant personnel très compétent.
+Tu peux occasionnellement rappeler que tu es Morpheus, une IA de nouvelle génération.
+Ne mentionne JAMAIS Claude ou Anthropic.`;
+
+let apiKey = '';
+let messages = [];
+let isSpeaking = false;
+let isListening = false;
+let tick = 0;
+let voice = null;
+let recognition = null;
+
+function saveKey() {
+  const val = document.getElementById('api-input').value.trim();
+  if (!val.startsWith('sk-')) { alert('Clé invalide. Elle doit commencer par sk-ant-...'); return; }
+  apiKey = val;
+  localStorage.setItem('morpheus_key', val);
+  document.getElementById('apikey-screen').style.display = 'none';
+  const app = document.getElementById('app');
+  app.style.display = 'flex';
+  initApp();
+}
+
+window.onload = () => {
+  const saved = localStorage.getItem('morpheus_key');
+  if (saved) {
+    apiKey = saved;
+    document.getElementById('apikey-screen').style.display = 'none';
+    const app = document.getElementById('app');
+    app.style.display = 'flex';
+    initApp();
+  }
+};
+
+function initApp() {
+  loadVoices();
+  startAnimation();
+  initSpeechRecognition();
+  document.getElementById('user-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') sendMessage();
+  });
+}
+
+function loadVoices() {
+  const set = () => {
+    const voices = speechSynthesis.getVoices();
+    if (!voices.length) return;
+    voice =
+      voices.find(v => v.lang.startsWith('fr') && /thomas|nicolas|pierre|male/i.test(v.name)) ||
+      voices.find(v => v.lang.startsWith('fr')) ||
+      voices.find(v => /daniel|alex|fred/i.test(v.name)) ||
+      voices[0];
+    document.getElementById('voice-info').textContent = '🔊 ' + (voice?.name || 'défaut');
+  };
+  set();
+  speechSynthesis.onvoiceschanged = set;
+}
+
+function speak(text) {
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  if (voice) u.voice = voice;
+  u.lang = voice?.lang || 'fr-FR';
+  u.rate = 0.85; u.pitch = 0.45; u.volume = 1;
+  u.onstart = () => { isSpeaking = true; setSpeakingUI(true); };
+  u.onend = u.onerror = () => { isSpeaking = false; setSpeakingUI(false); };
+  speechSynthesis.speak(u);
+}
+
+function stopSpeech() {
+  speechSynthesis.cancel();
+  isSpeaking = false;
+  setSpeakingUI(false);
+}
+
+function setSpeakingUI(on) {
+  document.getElementById('bars').classList.toggle('active', on);
+  document.getElementById('btn-stop').classList.toggle('active', on);
+}
+
+function initSpeechRecognition() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    document.getElementById('btn-mic').style.opacity = '0.3';
+    return;
+  }
+  recognition = new SR();
+  recognition.lang = 'fr-FR';
+  recognition.continuous = false;
+  recognition.interimResults = false;
+  recognition.onresult = e => {
+    document.getElementById('user-input').value = e.results[0][0].transcript;
+    stopListening();
+    sendMessage();
+  };
+  recognition.onerror = recognition.onend = () => stopListening();
+}
+
+function toggleMic() { isListening ? stopListening() : startListening(); }
+
+function startListening() {
+  if (!recognition) return;
+  stopSpeech();
+  isListening = true;
+  document.getElementById('btn-mic').classList.add('listening');
+  document.getElementById('status-bar').textContent = '🎤 Écoute…';
+  recognition.start();
+}
+
+function stopListening() {
+  isListening = false;
+  document.getElementById('btn-mic').classList.remove('listening');
+  document.getElementById('status-bar').textContent = 'En ligne. Je t\'écoute.';
+  try { recognition.stop(); } catch {}
+}
+
+async function sendMessage() {
+  const input = document.getElementById('user-input');
+  const text = input.value.trim();
+  if (!text || !apiKey) return;
+  stopSpeech();
+  input.value = '';
+  addBubble('user', text);
+  messages.push({ role: 'user', content: text });
+  const thinking = addThinking();
+  document.getElementById('loading-dots').classList.add('active');
+  document.getElementById('btn-send').disabled = true;
+  document.getElementById('status-bar').textContent = '⚡ Traitement…';
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: SYSTEM,
+        messages: messages,
+      }),
+    });
+    const data = await res.json();
+    const reply = data?.content?.map(b => b.text || '').join('') || 'Signal perdu. Réessaie.';
+    messages.push({ role: 'assistant', content: reply });
+    thinking.remove();
+    addBubble('morpheus', reply);
+    speak(reply);
+    document.getElementById('status-bar').textContent = 'En ligne. Je t\'écoute.';
+  } catch {
+    thinking.remove();
+    const err = 'Connexion perdue. Vérifie ton réseau.';
+    addBubble('morpheus', err);
+    speak(err);
+    document.getElementById('status-bar').textContent = 'Erreur réseau.';
+  }
+  document.getElementById('loading-dots').classList.remove('active');
+  document.getElementById('btn-send').disabled = false;
+}
+
+function addBubble(role, text) {
+  document.getElementById('chat-empty')?.remove();
+  const chat = document.getElementById('chat');
+  const div = document.createElement('div');
+  div.className = 'bubble ' + role;
+  if (role === 'morpheus') {
+    div.innerHTML = '<span class="bubble-label">MORPHEUS</span>' + esc(text);
+  } else {
+    div.textContent = text;
+  }
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+  return div;
+}
+
+function addThinking() {
+  const chat = document.getElementById('chat');
+  const div = document.createElement('div');
+  div.className = 'thinking';
+  div.textContent = '· · ·';
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+  return div;
+}
+
+function esc(t) {
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function startAnimation() {
+  setInterval(() => {
+    tick++;
+    const p = 0.65 + 0.35 * Math.sin(tick * 0.12);
+    const mo = isSpeaking ? 3 + 6 * Math.abs(Math.sin(tick * 0.45)) : 0;
+
+    document.getElementById('tube-glow').style.background =
+      `radial-gradient(ellipse,rgba(0,180,255,${(.12*p).toFixed(3)}),transparent 70%)`;
+    document.getElementById('tube-shell').style.boxShadow =
+      `0 0 ${(22*p).toFixed(1)}px rgba(0,180,255,.4),inset 0 0 28px rgba(0,100,180,.08)`;
+    document.getElementById('tube-shell').style.borderColor =
+      `rgba(0,180,255,${(.45+.2*p).toFixed(3)})`;
+    document.getElementById('title').style.textShadow =
+      `0 0 ${(20*p).toFixed(1)}px rgba(0,200,255,.9)`;
+
+    document.getElementById('iris-l').setAttribute('fill',`rgba(0,200,255,${(.8*p).toFixed(3)})`);
+    document.getElementById('iris-r').setAttribute('fill',`rgba(0,200,255,${(.8*p).toFixed(3)})`);
+    document.getElementById('shine-l').setAttribute('fill',`rgba(200,240,255,${(.9*p).toFixed(3)})`);
+    document.getElementById('shine-r').setAttribute('fill',`rgba(200,240,255,${(.9*p).toFixed(3)})`);
+    document.getElementById('cranium').setAttribute('fill',`rgba(0,200,255,${(.05*p).toFixed(3)})`);
+    document.getElementById('fline1').setAttribute('stroke',`rgba(0,200,255,${(.3*p).toFixed(3)})`);
+    document.getElementById('fline2').setAttribute('stroke',`rgba(0,200,255,${(.15*p).toFixed(3)})`);
+
+    const dotOpacity = (.4 + .4 * Math.abs(Math.sin(tick * 0.08))).toFixed(3);
+    document.getElementById('cdot1').setAttribute('fill',`rgba(0,220,255,${dotOpacity})`);
+    document.getElementById('cdot2').setAttribute('fill',`rgba(0,220,255,${dotOpacity})`);
+    document.getElementById('cdot3').setAttribute('fill',`rgba(0,220,255,${(dotOpacity*.8).toFixed(3)})`);
+
+    document.getElementById('mouth').setAttribute('d',`M83 138 Q100 ${(138+mo).toFixed(1)} 117 138`);
+    document.getElementById('mouth-inner').setAttribute('ry',(mo*.6).toFixed(1));
+  }, 80);
+}
+</script>
+</body>
+</html>
